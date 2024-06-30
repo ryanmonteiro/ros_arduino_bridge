@@ -8,7 +8,7 @@
     readEncoder() and setMotorSpeed() wrapper functions if using 
     different motor controller or encoder method.
 
-    Created for the Pi Robot Project: http://www.pirobot.org
+    Created for the Pi Robot Project: http://www.pirobot.https://github.com/joshnewans/ros_arduino_bridge.gitorg
     and the Home Brew Robotics Club (HBRC): http://hbrobotics.org
     
     Authors: Patrick Goebel, James Nugen
@@ -60,7 +60,10 @@
    //#define ROBOGAIA
    
    /* Encoders directly attached to Arduino board */
-   #define ARDUINO_ENC_COUNTER
+   //#define ARDUINO_ENC_COUNTER
+
+   /*IR Encoder directly attached to Arduino board*/
+   #define ARDUINO_IR_COUNTER
 
    /* L298 Motor driver*/
    #define L298_MOTOR_DRIVER
@@ -68,6 +71,9 @@
 
 //#define USE_SERVOS  // Enable use of PWM servos as defined in servos.h
 #undef USE_SERVOS     // Disable use of PWM servos
+
+#define USE_SENSORS  // Enable use of sensors as defined in sensors.h
+//#undef USE_SENSORS     // Disable use of sensors
 
 /* Serial port baud rate */
 #define BAUDRATE     57600
@@ -78,14 +84,17 @@
 #if defined(ARDUINO) && ARDUINO >= 100
 #include "Arduino.h"
 #else
-#include "WProgram.h"
+//#include "WProgram.h"
 #endif
 
 /* Include definition of serial commands */
 #include "commands.h"
 
-/* Sensor functions */
-#include "sensors.h"
+/* Include sensors support if required */
+#ifdef USE_SENSORS
+  #include "sensors.h"
+  #include <Wire.h>
+#endif
 
 /* Include servo support if required */
 #ifdef USE_SERVOS
@@ -182,16 +191,21 @@ int runCommand() {
     else if (arg2 == 1) pinMode(arg1, OUTPUT);
     Serial.println("OK");
     break;
+#ifdef USE_SENSORS  
   case PING:
     Serial.println(Ping(arg1));
     break;
+  case READ_LSENSOR:
+    Serial.println(readLaserSensors());
+    break;
+#endif
 #ifdef USE_SERVOS
   case SERVO_WRITE:
-    servos[arg1].setTargetPosition(arg2);
+    servo1.setTargetPosition(arg1);
     Serial.println("OK");
     break;
   case SERVO_READ:
-    Serial.println(servos[arg1].getServo().read());
+    Serial.println(servo1.getServo().read());
     break;
 #endif
     
@@ -248,6 +262,7 @@ int runCommand() {
 /* Setup function--runs once at startup. */
 void setup() {
   Serial.begin(BAUDRATE);
+  Wire.begin();
 
 // Initialize the motor controller if used */
 #ifdef USE_BASE
@@ -272,19 +287,32 @@ void setup() {
     // enable PCINT1 and PCINT2 interrupt in the general interrupt mask
     PCICR |= (1 << PCIE1) | (1 << PCIE2);
   #endif
+
+  #ifdef ARDUINO_IR_COUNTER
+      //set as inputs
+    DDRD &= ~(1<<LEFT_ENC_PIN_A);
+    DDRC &= ~(1<<RIGHT_ENC_PIN_A);
+    
+    // tell pin change mask to listen to left encoder pins
+    PCMSK2 |= (1 << LEFT_ENC_PIN_A);
+    // tell pin change mask to listen to right encoder pins
+    PCMSK1 |= (1 << RIGHT_ENC_PIN_A);
+    
+    // enable PCINT1 and PCINT2 interrupt in the general interrupt mask
+    PCICR |= (1 << PCIE1) | (1 << PCIE2);
+  
   initMotorController();
   resetPID();
+  #endif
+
+  #ifdef USE_SENSORS
+    initLaserSensors();
+  #endif
 #endif
 
 /* Attach servos if used */
   #ifdef USE_SERVOS
-    int i;
-    for (i = 0; i < N_SERVOS; i++) {
-      servos[i].initServo(
-          servoPins[i],
-          stepDelay[i],
-          servoInitPosition[i]);
-    }
+      servo1.initServo(SERVO_PIN, SERVO_DELAY, SERVO_INIT);
   #endif
 }
 
@@ -349,10 +377,7 @@ void loop() {
 
 // Sweep servos
 #ifdef USE_SERVOS
-  int i;
-  for (i = 0; i < N_SERVOS; i++) {
-    servos[i].doSweep();
-  }
+    servo1.doSweep();
 #endif
 }
 

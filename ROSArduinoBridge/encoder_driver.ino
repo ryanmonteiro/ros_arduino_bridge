@@ -68,6 +68,45 @@
       return;
     }
   }
+
+#elif defined(ARDUINO_IR_COUNTER)
+  volatile long left_enc_pos = 0L;
+  volatile long right_enc_pos = 0L;
+  static const int8_t ENC_STATES [] = {0,1,-1,0,-1,0,0,1,1,0,0,-1,0,-1,1,0};  //encoder lookup table
+    
+  /* Interrupt routine for LEFT encoder, taking care of actual counting */
+  ISR (PCINT2_vect){
+    if (digitalRead(PD2) == LOW)
+    {
+      left_enc_pos++;
+    }
+  }
+  
+  /* Interrupt routine for RIGHT encoder, taking care of actual counting */
+  ISR (PCINT1_vect){
+    if (digitalRead(PC4) == LOW)
+    {
+      right_enc_pos++;
+    }
+  }
+  
+  /* Wrap the encoder reading function */
+  long readEncoder(int i) {
+    if (i == LEFT) return left_enc_pos;
+    else return right_enc_pos;
+  }
+
+  /* Wrap the encoder reset function */
+  void resetEncoder(int i) {
+    if (i == LEFT){
+      left_enc_pos=0L;
+      return;
+    } else { 
+      right_enc_pos=0L;
+      return;
+    }
+   }
+
 #else
   #error A encoder driver must be selected!
 #endif
@@ -79,4 +118,3 @@ void resetEncoders() {
 }
 
 #endif
-

@@ -11,68 +11,45 @@
 
 #ifdef USE_SERVOS
 
-
-// Constructor
-SweepServo::SweepServo()
-{
-  this->currentPositionDegrees = 0;
-  this->targetPositionDegrees = 0;
-  this->lastSweepCommand = 0;
+Sweeper::Sweeper(){
+  this->currentPosition = 0;
+  this->targetPosition = 0;
+  this->increment = 1;
+  this->lastUpdate = 0;
 }
 
-
-// Init
-void SweepServo::initServo(
-    int servoPin,
-    int stepDelayMs,
-    int initPosition)
-{
+void Sweeper::initServo(int servoPin, int servoDelay, int servoInit){
   this->servo.attach(servoPin);
-  this->stepDelayMs = stepDelayMs;
-  this->currentPositionDegrees = initPosition;
-  this->targetPositionDegrees = initPosition;
-  this->lastSweepCommand = millis();
+  this->updateInterval = servoDelay;
+  this->currentPosition = servoInit;
+  this->targetPosition = servoInit;
 }
 
+void Sweeper::detachServo(){
+  this->servo.detach();
+}
 
-// Perform Sweep
-void SweepServo::doSweep()
-{
-
-  // Get ellapsed time
-  int delta = millis() - this->lastSweepCommand;
-
-  // Check if time for a step
-  if (delta > this->stepDelayMs) {
-    // Check step direction
-    if (this->targetPositionDegrees > this->currentPositionDegrees) {
-      this->currentPositionDegrees++;
-      this->servo.write(this->currentPositionDegrees);
+void Sweeper::doSweep(){
+  if ((millis() - this->lastUpdate) > this->updateInterval)   //Time to update
+  {
+    this->lastUpdate = millis();
+    this->currentPosition += this->increment;
+    this->servo.write(this->currentPosition);
+    if ((this->currentPosition >= 180) || (this->currentPosition <= 0)) // end of sweep
+    {
+      //reverse direction
+      this->increment = -this->increment;
     }
-    else if (this->targetPositionDegrees < this->currentPositionDegrees) {
-      this->currentPositionDegrees--;
-      this->servo.write(this->currentPositionDegrees);
-    }
-    // if target == current position, do nothing
-
-    // reset timer
-    this->lastSweepCommand = millis();
-  }
+  } 
 }
 
-
-// Set a new target position
-void SweepServo::setTargetPosition(int position)
-{
-  this->targetPositionDegrees = position;
+void Sweeper::setTargetPosition(int position){
+  this->currentPosition = position;
+  this->servo.write(this->currentPosition);
 }
 
-
-// Accessor for servo object
-Servo SweepServo::getServo()
-{
+Servo Sweeper::getServo(){
   return this->servo;
 }
-
 
 #endif
