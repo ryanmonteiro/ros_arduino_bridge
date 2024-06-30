@@ -1,7 +1,7 @@
 #ifndef SERVOS_H
 #define SERVOS_H
 
-#define SERVO_PIN 3
+#define SERVO_PIN 11
 #define SERVO_DELAY 150
 #define SERVO_INIT 90 // Servo initial position (0 - 180)
 
